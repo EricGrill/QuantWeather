@@ -1,0 +1,25 @@
+{
+  "location": "New York City",
+  "forecast": {
+    "properties": {
+      "generatedAt": "2026-04-20T10:00:00Z",
+      "periods": [
+        {
+          "name": "Today",
+          "startTime": "2026-04-20T06:00:00-04:00",
+          "isDaytime": true,
+          "temperature": 83,
+          "temperatureUnit": "F",
+          "probabilityOfPrecipitation": {
+            "unitCode": "wmoUnit:percent",
+            "value": 20
+          },
+          "quantitativePrecipitation": {
+            "unitCode": "wmoUnit:mm",
+            "value": 2.54
+          }
+        }
+      ]
+    }
+  }
+}

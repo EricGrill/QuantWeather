@@ -10,6 +10,9 @@ def render_dashboard_html(
     latest_records: list[dict[str, Any]],
     latest_summary: dict[str, Any],
     latest_comparison: dict[str, Any] | None = None,
+    analytics: dict[str, Any] | None = None,
+    monitoring: dict[str, Any] | None = None,
+    run_history_analytics: dict[str, Any] | None = None,
 ) -> str:
     latest_run = runs[-1] if runs else None
 
@@ -72,6 +75,45 @@ def render_dashboard_html(
             ]
         )
 
+    if analytics is not None:
+        lines.extend(["<section class=\"section\">", "<h2>Analytics</h2>", "<section class=\"grid\">"])
+        for label, value in [
+            ("Approval Rate", f"{analytics['approval_rate']:.2%}"),
+            ("Average Edge", "n/a" if analytics["average_edge"] is None else f"{analytics['average_edge']:.4f}"),
+            ("Expected Edge Value", f"${analytics['expected_edge_value']:.2f}"),
+            ("Proposed Notional", f"${analytics['proposed_notional']:.2f}"),
+        ]:
+            lines.append("<div class=\"card\">")
+            lines.append(f"<h3>{escape(str(value))}</h3>")
+            lines.append(f"<p>{escape(label)}</p>")
+            lines.append("</div>")
+        lines.extend(["</section>", "</section>"])
+
+    if monitoring is not None:
+        status = "Healthy" if monitoring.get("healthy") else "Needs Attention"
+        lines.extend(["<section class=\"section card\">", "<h2>Monitoring</h2>"])
+        lines.append(f"<p><strong>Status:</strong> {escape(status)}</p>")
+        if monitoring.get("alerts"):
+            lines.append("<p>")
+            for alert in monitoring["alerts"]:
+                lines.append(f"<span class=\"pill\">{escape(alert['code'])}</span>")
+            lines.append("</p>")
+        else:
+            lines.append("<p>No active alerts.</p>")
+        lines.append("</section>")
+
+    if run_history_analytics is not None:
+        lines.extend(
+            [
+                "<section class=\"section card\">",
+                "<h2>History Analytics</h2>",
+                f"<p><strong>Runs:</strong> {escape(str(run_history_analytics['run_count']))}</p>",
+                f"<p><strong>Total approved:</strong> {escape(str(run_history_analytics.get('approved_count', 0)))}</p>",
+                f"<p><strong>Total errors:</strong> {escape(str(run_history_analytics.get('error_count', 0)))}</p>",
+                "</section>",
+            ]
+        )
+
     lines.extend(_render_records_section("Approved Opportunities", latest_records, "approved"))
     lines.extend(_render_records_section("Blocked Opportunities", latest_records, "blocked"))
     lines.extend(_render_records_section("Errors", latest_records, "error"))
@@ -85,6 +127,8 @@ def render_dashboard_html(
             artifacts.append(f"compare: <code>{escape(run['comparison_report_path'])}</code>")
         if run.get("dashboard_path"):
             artifacts.append(f"dashboard: <code>{escape(run['dashboard_path'])}</code>")
+        if run.get("execution_path"):
+            artifacts.append(f"execution: <code>{escape(run['execution_path'])}</code>")
         lines.append("<tr>")
         lines.append(f"<td><code>{escape(run['run_id'])}</code></td>")
         lines.append(f"<td>{escape(run['created_at'])}</td>")

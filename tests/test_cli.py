@@ -290,6 +290,50 @@ class CliTests(unittest.TestCase):
             self.assertIn("QuantWeather Manual Review Dashboard", html)
             self.assertIn("Latest Comparison", html)
 
+    def test_discover_command_outputs_json(self) -> None:
+        result = run_cli(
+            "discover",
+            "--format",
+            "json",
+            "--source",
+            str(REPO_ROOT / "tests" / "fixtures" / "markets_mixed.json"),
+            "--min-liquidity",
+            "10000",
+        )
+
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload[0]["accepted"], True)
+        self.assertIn("reason_codes", payload[0])
+
+    def test_ingest_noaa_command_outputs_normalized_json(self) -> None:
+        result = run_cli(
+            "ingest-noaa",
+            "--input",
+            str(REPO_ROOT / "tests" / "fixtures" / "noaa_forecast.json"),
+        )
+
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload[0]["source"], "noaa-nws")
+        self.assertEqual(payload[0]["metrics"]["temperature_high_f"], 83.0)
+
+    def test_execute_monitor_and_analytics_commands_use_latest_run(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            save_result = run_cli("save-run", "--run-dir", tmpdir)
+            self.assertEqual(save_result.returncode, 0, msg=save_result.stderr)
+
+            execute_result = run_cli("execute", "--run-dir", tmpdir)
+            monitor_result = run_cli("monitor", "--run-dir", tmpdir)
+            analytics_result = run_cli("analytics", "--run-dir", tmpdir)
+
+            self.assertEqual(execute_result.returncode, 0, msg=execute_result.stderr)
+            self.assertTrue(Path(execute_result.stdout.strip()).exists())
+            self.assertEqual(monitor_result.returncode, 0, msg=monitor_result.stderr)
+            self.assertEqual(analytics_result.returncode, 0, msg=analytics_result.stderr)
+            self.assertIn("execution", json.loads(monitor_result.stdout))
+            self.assertIn("latest_run", json.loads(analytics_result.stdout))
+
 
 if __name__ == "__main__":
     unittest.main()

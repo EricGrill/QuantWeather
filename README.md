@@ -16,13 +16,22 @@ The root screening package currently supports:
 
 - structured market and forecast domain objects
 - fixture-backed JSON normalization for markets and forecasts
+- market discovery from exchange/catalog snapshots with liquidity, spread, rule,
+  and location filters
+- NOAA/NWS forecast normalization from fixture payloads, plus an explicit live
+  fetch path through the NWS points API
 - parsing threshold-style weather market rules
 - generating probability estimates for temperature and precipitation events
 - comparing model probabilities to market-implied prices
 - sizing proposed positions under configurable risk limits
+- paper execution artifacts for approved recommendations
+- monitoring checks for screen and execution health
+- analytics for latest runs and saved-run history
 - producing auditable, reviewable opportunity summaries through a CLI entrypoint
 - screening batches of markets against forecast snapshots into a ranked review feed
 - exporting review feeds as stable JSON for future UI or persistence layers
+- rendering a local HTML dashboard with summaries, analytics, monitoring alerts,
+  comparisons, run history, and linked artifacts
 
 The execution package currently supports:
 
@@ -32,11 +41,12 @@ The execution package currently supports:
 - stdlib HTTP API
 - Next.js execution dashboard
 
-## What Is Deliberately Deferred
+## What Is Still Deliberately Deferred
 
-The PRD calls for market discovery, NOAA ingestion, execution, monitoring,
-analytics, and a dashboard. Those capabilities are intentionally deferred so the
-core decision flow can be shaped and tested first.
+The PRD lanes now have dependency-light scaffolds in the root package. Live
+exchange execution, provider-specific market discovery adapters, persisted
+analytics stores, authentication, and production monitoring transports remain
+deferred until the operator workflow and data contracts are stable.
 
 ## Quick Start
 
@@ -56,6 +66,28 @@ Screen the fixture-backed review feed:
 
 ```bash
 env PYTHONPATH=src python3 -m quantweather.cli screen --format text
+```
+
+Discover supported markets from a catalog snapshot:
+
+```bash
+env PYTHONPATH=src python3 -m quantweather.cli discover --format json --min-liquidity 10000
+```
+
+Normalize a NOAA/NWS fixture into QuantWeather forecast JSON:
+
+```bash
+env PYTHONPATH=src python3 -m quantweather.cli ingest-noaa --input ./tests/fixtures/noaa_forecast.json
+```
+
+Fetch a live NWS forecast by point and normalize it:
+
+```bash
+env PYTHONPATH=src python3 -m quantweather.cli ingest-noaa \
+  --lat 40.7128 \
+  --lon -74.0060 \
+  --location "New York City" \
+  --user-agent "QuantWeather/0.1 contact=you@example.com"
 ```
 
 Run a screen from a JSON profile:
@@ -136,6 +168,24 @@ Write the latest local manual-review dashboard to disk:
 env PYTHONPATH=src python3 -m quantweather.cli dashboard-save --run-dir ./artifacts/screen-runs
 ```
 
+Paper-execute the latest saved run and persist an execution artifact:
+
+```bash
+env PYTHONPATH=src python3 -m quantweather.cli execute --run-dir ./artifacts/screen-runs
+```
+
+Monitor the latest saved run and any linked execution artifact:
+
+```bash
+env PYTHONPATH=src python3 -m quantweather.cli monitor --run-dir ./artifacts/screen-runs
+```
+
+Analyze the latest saved run plus saved-run history:
+
+```bash
+env PYTHONPATH=src python3 -m quantweather.cli analytics --run-dir ./artifacts/screen-runs
+```
+
 ## Docker
 
 Build the local image:
@@ -175,11 +225,16 @@ docker compose run --rm quantweather save-run --run-dir /app/artifacts/screen-ru
 ## Package Layout
 
 - `src/quantweather/domain.py`: shared dataclasses and enums
+- `src/quantweather/discovery.py`: market catalog discovery filters
+- `src/quantweather/noaa.py`: NOAA/NWS forecast normalization and live fetch helper
 - `src/quantweather/ingest.py`: fixture-backed payload normalization helpers
 - `src/quantweather/market_rules.py`: rule parsing for simple weather markets
 - `src/quantweather/modeling.py`: probability estimation helpers
 - `src/quantweather/signals.py`: market edge and opportunity ranking logic
 - `src/quantweather/risk.py`: sizing and guardrails
+- `src/quantweather/execution.py`: paper execution order generation
+- `src/quantweather/monitoring.py`: run and execution health checks
+- `src/quantweather/analytics.py`: latest-run and history analytics
 - `src/quantweather/audit.py`: recommendation record assembly
 - `src/quantweather/engine.py`: end-to-end market evaluation orchestration
 - `src/quantweather/serialize.py`: JSON-safe recommendation export helpers
@@ -196,8 +251,11 @@ docker compose run --rm quantweather save-run --run-dir /app/artifacts/screen-ru
 - Market prices are expressed as `0.0..1.0` probabilities.
 - Unsupported market titles are normalized at ingest time and surfaced as
   review-feed errors during screening.
-- Execution is out of scope for this first scaffold; the system only proposes
-  trades.
+- Paper execution is supported; live exchange execution is intentionally blocked
+  until a broker/exchange adapter is configured.
+- Live NOAA ingestion uses the NWS `/points/{lat},{lon}` lookup to discover the
+  grid forecast URL, then normalizes the forecast periods into QuantWeather
+  forecast snapshots.
 
 ## Profile Shape
 

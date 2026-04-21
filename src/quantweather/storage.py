@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import fcntl
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -8,6 +9,9 @@ from typing import Any
 
 from .domain import DecisionStatus, RecommendationRecord
 from .dashboard import render_dashboard_html, write_dashboard_html
+from .execution import build_execution_orders, execution_summary, write_execution_orders
+from .analytics import analyze_run_history, analyze_screen_run
+from .monitoring import monitor_screen_run
 from .report import render_run_comparison_report, render_screen_run_report
 from .serialize import recommendations_to_json
 
@@ -177,8 +181,11 @@ def save_latest_screen_report(directory: str | Path) -> Path:
     report_path = reports_dir / f"{latest_metadata['run_id']}.md"
     report_path.write_text(report_text, encoding="utf-8")
 
-    latest_metadata["screen_report_path"] = str(report_path.relative_to(base_dir))
-    _write_manifest(manifest_path, manifest)
+    _update_run_metadata(
+        manifest_path,
+        latest_metadata["run_id"],
+        {"screen_report_path": str(report_path.relative_to(base_dir))},
+    )
     return report_path
 
 
@@ -202,8 +209,11 @@ def save_latest_comparison_report(directory: str | Path) -> Path:
     report_path = reports_dir / report_filename
     report_path.write_text(report_text, encoding="utf-8")
 
-    newer_metadata["comparison_report_path"] = str(report_path.relative_to(base_dir))
-    _write_manifest(manifest_path, manifest)
+    _update_run_metadata(
+        manifest_path,
+        newer_metadata["run_id"],
+        {"comparison_report_path": str(report_path.relative_to(base_dir))},
+    )
     return report_path
 
 
@@ -218,6 +228,8 @@ def save_latest_dashboard(directory: str | Path) -> Path:
     latest_metadata = runs[-1]
     latest_records = load_screen_run(base_dir / latest_metadata["path"])
     latest_summary = summarize_screen_run(latest_records)
+    latest_analytics = analyze_screen_run(latest_records)
+    latest_monitoring = monitor_screen_run(latest_records)
     comparison = None
     if len(runs) >= 2:
         older = load_screen_run(base_dir / runs[-2]["path"])
@@ -227,11 +239,50 @@ def save_latest_dashboard(directory: str | Path) -> Path:
     dashboards_dir.mkdir(parents=True, exist_ok=True)
     dashboard_path = dashboards_dir / f"{latest_metadata['run_id']}.html"
     latest_metadata["dashboard_path"] = str(dashboard_path.relative_to(base_dir))
-    dashboard_html = render_dashboard_html(runs, latest_records, latest_summary, comparison)
+    dashboard_html = render_dashboard_html(
+        runs,
+        latest_records,
+        latest_summary,
+        comparison,
+        analytics=latest_analytics,
+        monitoring=latest_monitoring,
+        run_history_analytics=analyze_run_history(runs),
+    )
     write_dashboard_html(dashboard_html, dashboard_path)
 
-    _write_manifest(manifest_path, manifest)
+    _update_run_metadata(
+        manifest_path,
+        latest_metadata["run_id"],
+        {"dashboard_path": str(dashboard_path.relative_to(base_dir))},
+    )
     return dashboard_path
+
+
+def save_latest_execution(directory: str | Path, *, mode: str = "paper") -> Path:
+    base_dir = Path(directory)
+    manifest_path = base_dir / "manifest.json"
+    manifest = _read_manifest(manifest_path)
+    if not manifest["runs"]:
+        raise ValueError("No saved screen runs found")
+
+    latest_metadata = manifest["runs"][-1]
+    latest_records = load_screen_run(base_dir / latest_metadata["path"])
+    orders = build_execution_orders(latest_records, mode=mode)
+
+    executions_dir = base_dir / "executions"
+    executions_dir.mkdir(parents=True, exist_ok=True)
+    execution_path = executions_dir / f"{latest_metadata['run_id']}-{mode}.json"
+    write_execution_orders(orders, execution_path)
+
+    _update_run_metadata(
+        manifest_path,
+        latest_metadata["run_id"],
+        {
+            "execution_path": str(execution_path.relative_to(base_dir)),
+            "execution_summary": execution_summary(orders),
+        },
+    )
+    return execution_path
 
 
 def _read_manifest(path: Path) -> dict[str, Any]:
@@ -242,6 +293,27 @@ def _read_manifest(path: Path) -> dict[str, Any]:
 
 def _write_manifest(path: Path, manifest: dict[str, Any]) -> None:
     path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def _update_run_metadata(path: Path, run_id: str, updates: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a+", encoding="utf-8") as handle:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        try:
+            handle.seek(0)
+            raw = handle.read()
+            manifest = json.loads(raw) if raw.strip() else {"runs": []}
+            for run in manifest["runs"]:
+                if run["run_id"] == run_id:
+                    run.update(updates)
+                    handle.seek(0)
+                    handle.truncate()
+                    handle.write(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+                    handle.flush()
+                    return
+        finally:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+    raise ValueError(f"Run not found in manifest: {run_id}")
 
 
 def _build_run_id(label: str) -> str:

@@ -13,6 +13,7 @@ from quantweather.storage import (
     load_screen_run,
     save_latest_dashboard,
     save_latest_comparison_report,
+    save_latest_execution,
     save_latest_screen_report,
     persist_screen_run,
     summarize_latest_screen_run,
@@ -196,6 +197,22 @@ class StorageTests(unittest.TestCase):
                 str(dashboard_path.relative_to(output_dir)),
             )
             self.assertIn(str(dashboard_path.relative_to(output_dir)), dashboard_html)
+            self.assertIn("Analytics", dashboard_html)
+            self.assertIn("Monitoring", dashboard_html)
+
+    def test_save_latest_execution_writes_orders_and_updates_manifest(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            output_dir = Path(tmpdir) / "screen-runs"
+            save_fixture_screen_run(output_dir)
+
+            execution_path = save_latest_execution(output_dir)
+            manifest = json.loads((output_dir / "manifest.json").read_text(encoding="utf-8"))
+            orders = json.loads(execution_path.read_text(encoding="utf-8"))
+
+            self.assertTrue(execution_path.exists())
+            self.assertEqual(manifest["runs"][-1]["execution_path"], str(execution_path.relative_to(output_dir)))
+            self.assertEqual(manifest["runs"][-1]["execution_summary"]["filled_count"], 1)
+            self.assertEqual(orders[0]["status"], "paper_filled")
 
 
 if __name__ == "__main__":
