@@ -1,0 +1,24 @@
+{
+  "markets": [
+    {
+      "market_id": "fixture-nyc-high-80",
+      "title": "New York City high at or above 80F?",
+      "yes_price": 0.41,
+      "no_price": 0.62,
+      "liquidity": 25000.0,
+      "spread": 0.03,
+      "expires_at": "2026-04-21T23:59:59Z",
+      "rules_text": "Resolves YES if the observed daily high temperature in New York City is at least 80F."
+    },
+    {
+      "market_id": "fixture-bos-rain",
+      "title": "Boston rainfall at or above 0.5 inches?",
+      "yes_price": 0.34,
+      "no_price": 0.69,
+      "liquidity": 12000.0,
+      "spread": 0.04,
+      "expires_at": "2026-04-21T23:59:59Z",
+      "rules_text": "Resolves YES if Boston records at least 0.5 inches of rainfall."
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+# Ralph Context Snapshot
+
+- Task statement: Continue the QuantWeather execution system under Ralph until the next foundational implementation slice is complete, verified, and reviewable.
+- Desired outcome: Move the starter execution repo from skeleton-only code to a usable local foundation by adding durable SQLite persistence and wiring it into the service layer.
+- Known facts/evidence:
+  - The repo is a fresh execution-system scaffold with domain, config, approvals, orders, positions, risk, events, repository, service, and API modules.
+  - Fresh baseline before this branch: starter import tests passed and `python3 -m compileall src tests` passed.
+  - The higher-level plan calls for SQLite-backed persistence first, then approval persistence, then paper trading lifecycle.
+  - There is no repo-local `AGENTS.md` under this repo; top-level developer/workspace guidance applies.
+- Constraints:
+  - No new dependencies without explicit request.
+  - Keep diffs small, reviewable, and reversible.
+  - Gather fresh verification evidence before completion.
+  - Architect verification and bounded deslop pass are required before final completion.
+- Unknowns/open questions:
+  - How far to push the first SQLite slice: approvals only, or approvals + intents + events together.
+  - Whether to keep SQLite path parsing minimal and rely on a `sqlite:///...` local URL shape only for now.
+- Likely codebase touchpoints:
+  - `src/quantweather_execution/repository.py`
+  - `src/quantweather_execution/service.py`
+  - `src/quantweather_execution/config.py`
+  - `tests/`
+  - likely a new repository-focused test module

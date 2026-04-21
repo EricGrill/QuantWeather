@@ -1,0 +1,26 @@
+# Ralph Context Snapshot
+
+- Task statement: Continue QuantWeather under Ralph until it is materially driven toward completion against the Polymarket weather trading PRD, not just the current local slice.
+- Desired outcome: Convert the current fixture-backed operator tooling into a broader PRD-aligned foundation with canonical planning artifacts and another concrete product slice implemented immediately after planning.
+- Known facts/evidence:
+  - Current repo supports fixture-backed ingest, evaluation, screening, JSON export, local run storage, summaries/comparisons, Markdown reports, and an argparse CLI with JSON profile support.
+  - Fresh verification before this branch: full suite passed with 40 tests and `python3 -m compileall src tests` passed.
+  - The user explicitly requested `$ralph` and wants work continued toward the PRD.
+  - The top-level PRD is `/Users/eric/Downloads/polymarket_weather_trading_prd.md`.
+  - There are no canonical `.omx/plans/prd-*.md` and `.omx/plans/test-spec-*.md` artifacts yet, so Ralph’s planning gate requires them before more implementation.
+- Constraints:
+  - No new dependencies without explicit request.
+  - Keep diffs reviewable and reversible.
+  - Must gather fresh verification evidence before completion.
+  - Must get architect verification and run a bounded deslop pass.
+  - OMX state transport has been unreliable; raw `.omx/state` files may need manual cleanup.
+- Unknowns/open questions:
+  - Which remaining V1 gap should be implemented next after the planning gate: manual review dashboard, trade logging/analytics, or Dockerized packaging.
+  - Whether a static/local dashboard is sufficient for the current repo stage versus a server-backed dashboard.
+- Likely codebase touchpoints:
+  - `.omx/plans/`
+  - `src/quantweather/cli.py`
+  - `src/quantweather/storage.py`
+  - `src/quantweather/report.py`
+  - likely new dashboard-oriented module(s) under `src/quantweather/`
+  - tests around CLI/storage/reporting flows

@@ -1,0 +1,26 @@
+# Ralph Context Snapshot
+
+- Task statement: Continue QuantWeather under Ralph until the next meaningful operator-facing slice is implemented, verified, and quality-checked.
+- Desired outcome: Move the scaffold closer to a usable local operator tool while preserving the no-new-dependencies constraint and the existing fixture-backed workflow.
+- Known facts/evidence:
+  - The repo now supports fixture-backed ingest, single-market evaluation, batch screening, JSON export, local run storage, run summaries/comparisons, and Markdown reporting.
+  - Fresh verification before this Ralph branch: `python3 -m unittest discover -s tests -p 'test_*.py' -v` passed with 28 tests; `python3 -m compileall src tests` passed.
+  - Saved runs can now persist raw JSON plus Markdown reports, and manifest entries point at report artifacts.
+  - `docs/shared/agent-tiers.md` is not present in this workspace, so Ralph tier selection must fall back to the repo/model-routing guidance in AGENTS.md plus explicit notes.
+- Constraints:
+  - No new dependencies without explicit request.
+  - Keep diffs small, reviewable, and reversible.
+  - Must gather fresh verification evidence before claiming completion.
+  - Must get architect verification before completion.
+  - Must run ai-slop-cleaner on Ralph-owned changed files unless explicitly skipped.
+- Unknowns/open questions:
+  - Which operator-facing workflow yields the most leverage next: actual command-line interface, richer fixture workflows, or broader screening controls.
+  - Whether OMX state MCP transport is currently reliable; direct file inspection worked while state status reads failed earlier.
+- Likely codebase touchpoints:
+  - `src/quantweather/cli.py`
+  - `src/quantweather/storage.py`
+  - `src/quantweather/report.py`
+  - `src/quantweather/__init__.py`
+  - `tests/test_storage.py`
+  - `tests/test_report.py`
+  - likely a new CLI-focused test module

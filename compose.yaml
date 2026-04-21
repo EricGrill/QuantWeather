@@ -1,0 +1,16 @@
+services:
+  quantweather:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: quantweather:local
+    working_dir: /app
+    environment:
+      PYTHONPATH: /app/src
+    volumes:
+      - ./artifacts:/app/artifacts
+      - ./tests/fixtures:/app/tests/fixtures:ro
+    command:
+      - screen
+      - --format
+      - text

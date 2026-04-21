@@ -1,0 +1,28 @@
+[
+  {
+    "source": "fixture-noaa",
+    "observed_at": "2026-04-20T12:00:00Z",
+    "location": "New York City",
+    "metrics": {
+      "temperature_high_f": 83.0,
+      "precipitation_in": 0.1,
+      "precipitation_probability": 0.2
+    },
+    "uncertainty": {
+      "temperature_high_f": 4.0
+    }
+  },
+  {
+    "source": "fixture-noaa",
+    "observed_at": "2026-04-20T12:00:00Z",
+    "location": "Boston",
+    "metrics": {
+      "temperature_high_f": 61.0,
+      "precipitation_in": 0.7,
+      "precipitation_probability": 0.75
+    },
+    "uncertainty": {
+      "temperature_high_f": 3.5
+    }
+  }
+]

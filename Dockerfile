@@ -1,0 +1,14 @@
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app/src
+
+WORKDIR /app
+
+COPY pyproject.toml README.md /app/
+COPY src /app/src
+COPY tests/fixtures /app/tests/fixtures
+
+ENTRYPOINT ["python", "-m", "quantweather.cli"]
+CMD ["demo"]
