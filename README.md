@@ -12,7 +12,34 @@ Polymarket-style markets.
 
 ## Current Scope
 
-The root screening package currently supports:
+See [docs/MVP.md](docs/MVP.md) for the full MVP acceptance checklist.
+
+### MVP (Paper Trading Loop)
+
+The following capabilities are required for a working paper-trading product:
+
+| Capability                   | Status   | Notes                                          |
+|------------------------------|----------|------------------------------------------------|
+| Live weather market discovery| Partial  | Fixture-backed works; live Polymarket pending  |
+| Live forecast ingestion      | Done     | NOAA/NWS via points API                        |
+| Model edge calculation       | Done     | Probability estimation + signal generation     |
+| Paper trade execution        | Done     | Artifacts from saved screening runs            |
+| Visible P/L and audit trail  | Done     | Execution API reports; manual signal ingest    |
+| Health and monitoring        | Done     | Screen + execution health checks               |
+| Local operator dashboard     | Done     | HTML dashboard with analytics                  |
+
+**Blocking issues for end-to-end live data:**
+
+- [CHA-2902](https://linear.app/chainbytes/issue/CHA-2902) — Venue configuration
+  and runtime status
+- [CHA-2903](https://linear.app/chainbytes/issue/CHA-2903) — Live Polymarket
+  market data adapter
+- [CHA-2904](https://linear.app/chainbytes/issue/CHA-2904) — Screening to
+  execution signal handoff
+
+### Root Screening Package
+
+The root package currently supports:
 
 - structured market and forecast domain objects
 - fixture-backed JSON normalization for markets and forecasts
@@ -33,6 +60,8 @@ The root screening package currently supports:
 - rendering a local HTML dashboard with summaries, analytics, monitoring alerts,
   comparisons, run history, and linked artifacts
 
+### Execution Package
+
 The execution package currently supports:
 
 - persisted signals, approvals, order intents, orders, fills, positions, and events
@@ -41,12 +70,23 @@ The execution package currently supports:
 - stdlib HTTP API
 - Next.js execution dashboard
 
-## What Is Still Deliberately Deferred
+## Deferred (Post-MVP)
 
-The PRD lanes now have dependency-light scaffolds in the root package. Live
-exchange execution, provider-specific market discovery adapters, persisted
-analytics stores, authentication, and production monitoring transports remain
-deferred until the operator workflow and data contracts are stable.
+The following remain deferred until the paper-trading loop is proven reliable:
+
+- **Live-money trading** — exchange adapter, wallet/key management
+- **Live Polymarket discovery** — REST client for Gamma/CLOB APIs
+  ([CHA-2903](https://linear.app/chainbytes/issue/CHA-2903),
+  [GitHub #2](https://github.com/EricGrill/QuantWeather/issues/2))
+- **Automated signal handoff** — screening to execution flow
+  ([CHA-2904](https://linear.app/chainbytes/issue/CHA-2904),
+  [GitHub #3](https://github.com/EricGrill/QuantWeather/issues/3))
+- **Venue status visibility** — dry-run vs live state reporting
+  ([CHA-2902](https://linear.app/chainbytes/issue/CHA-2902),
+  [GitHub #1](https://github.com/EricGrill/QuantWeather/issues/1))
+- **Persisted analytics stores** — beyond local JSON artifacts
+- **Authentication** — multi-user access control
+- **Production monitoring transports** — metrics, alerting, logging pipelines
 
 ## Quick Start
 
