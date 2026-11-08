@@ -109,6 +109,10 @@ class PositionProposal:
     sizing_method: SizingMethod
     blocked_reasons: List[str]
     approved: bool
+    # Non-blocking adjustments applied after per-market sizing, e.g. a size
+    # reduction by the aggregate daily risk budget. Each entry maps to a reason
+    # code in ``audit._reason_codes_from_adjustments``.
+    adjustments: List[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

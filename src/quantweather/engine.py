@@ -11,7 +11,7 @@ from .domain import (
 )
 from .market_rules import parse_event_rule
 from .modeling import estimate_probability
-from .risk import size_position
+from .risk import apply_daily_risk_budget, size_position
 from .signals import generate_signal
 
 
@@ -61,8 +61,32 @@ def screen_markets(
     daily_risk_used: float = 0.0,
     sizing_method: SizingMethod = SizingMethod.PROPORTIONAL,
 ) -> list[RecommendationRecord]:
+    """Evaluate every market and enforce ``max_daily_risk`` across the whole run.
+
+    Daily risk budget enforcement lives here, in screening, because this is
+    where positions are sized and where ``proposed_notional`` is reported.
+    Execution consumes those values as-is, so every approved notional in the
+    output is one the budget can actually honor.
+
+    Screening runs in two passes:
+
+    1. Each market is evaluated and sized independently against the budget
+       left at the start of the run (``max_daily_risk - daily_risk_used``).
+       This applies the per-trade, per-market and other static caps.
+    2. Approved proposals then consume the shared budget in **descending edge
+       order** (ties keep input order). The first proposals take their full
+       size, the one that crosses the limit is reduced to the remainder
+       (reason code ``DAILY_RISK_AGGREGATE_REDUCED``), and the rest are
+       refused (reason code ``DAILY_RISK_AGGREGATE_EXHAUSTED``).
+
+    Highest-edge-first is deliberate: input order is an artifact of the market
+    feed, and when budget is scarce it should go to the best opportunities.
+    The sum of approved ``proposed_notional`` never exceeds
+    ``max(max_daily_risk - daily_risk_used, 0)``.
+    """
     forecasts_by_location = {forecast.location.lower(): forecast for forecast in forecasts}
     recommendations: list[RecommendationRecord] = []
+    evaluated: list[tuple[EvaluationResult, ForecastSnapshot]] = []
 
     for market in markets:
         try:
@@ -128,9 +152,53 @@ def screen_markets(
             )
             continue
 
-        recommendations.append(result.recommendation)
+        evaluated.append((result, forecast))
 
+    recommendations.extend(
+        _apply_aggregate_daily_risk_budget(
+            evaluated,
+            remaining_budget=risk_limits.max_daily_risk - daily_risk_used,
+        )
+    )
     return sorted(recommendations, key=_recommendation_sort_key)
+
+
+def budget_consumption_order(
+    evaluated: list[tuple[EvaluationResult, ForecastSnapshot]],
+) -> list[tuple[EvaluationResult, ForecastSnapshot]]:
+    """Order in which approved proposals draw on the daily risk budget.
+
+    Descending signal edge; Python's stable sort keeps input order for ties.
+    Exposed so a backtest can consume budget in exactly the same order.
+    """
+    return sorted(
+        evaluated,
+        key=lambda item: -(item[0].signal.edge if item[0].signal is not None else 0.0),
+    )
+
+
+def _apply_aggregate_daily_risk_budget(
+    evaluated: list[tuple[EvaluationResult, ForecastSnapshot]],
+    remaining_budget: float,
+) -> list[RecommendationRecord]:
+    records: list[RecommendationRecord] = []
+    for result, forecast in budget_consumption_order(evaluated):
+        proposal, remaining_budget = apply_daily_risk_budget(result.proposal, remaining_budget)
+        if proposal is result.proposal:
+            records.append(result.recommendation)
+            continue
+        records.append(
+            build_recommendation_record(
+                market=result.market,
+                rule=result.rule,
+                estimate=result.estimate,
+                signal=result.signal,
+                proposal=proposal,
+                forecast_source=forecast.source,
+                forecast_observed_at=forecast.observed_at,
+            )
+        )
+    return records
 
 
 def _recommendation_sort_key(record: RecommendationRecord) -> tuple[int, float]:
