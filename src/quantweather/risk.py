@@ -1,6 +1,12 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 from .domain import Market, PositionProposal, RiskLimits, Side, SizingMethod, TradingSignal
+
+
+AGGREGATE_BUDGET_REDUCED = "Reduced by aggregate daily risk budget."
+AGGREGATE_BUDGET_REFUSED = "Aggregate daily risk budget exhausted by higher-edge positions."
 
 
 def size_position(
@@ -69,3 +75,43 @@ def size_position(
         blocked_reasons=blocked_reasons,
         approved=approved,
     )
+
+
+def apply_daily_risk_budget(
+    proposal: PositionProposal,
+    remaining_budget: float,
+) -> tuple[PositionProposal, float]:
+    """Charge one already-sized proposal against the remaining daily budget.
+
+    ``size_position`` caps a single position by ``max_daily_risk -
+    daily_risk_used``. That is only correct if the caller advances
+    ``daily_risk_used`` after every approved position. This helper is the
+    accumulator step: callers that size several positions against one budget
+    (``engine.screen_markets``, a backtest episode) feed proposals through it
+    in their chosen consumption order and carry the returned remainder forward.
+
+    Returns the possibly-adjusted proposal and the remaining budget after it.
+    Proposals that were not approved pass through untouched and consume nothing.
+    """
+    remaining = round(max(remaining_budget, 0.0), 2)
+    if not proposal.approved:
+        return proposal, remaining
+
+    if remaining <= 0.0:
+        refused = replace(
+            proposal,
+            notional=0.0,
+            approved=False,
+            blocked_reasons=[*proposal.blocked_reasons, AGGREGATE_BUDGET_REFUSED],
+        )
+        return refused, 0.0
+
+    if proposal.notional > remaining:
+        reduced = replace(
+            proposal,
+            notional=remaining,
+            adjustments=[*proposal.adjustments, AGGREGATE_BUDGET_REDUCED],
+        )
+        return reduced, 0.0
+
+    return proposal, round(remaining - proposal.notional, 2)

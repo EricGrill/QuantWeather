@@ -42,6 +42,7 @@ def build_recommendation_record(
         approval_state = ApprovalState.REVIEW_REQUIRED
         final_status = DecisionStatus.APPROVED
         reason_codes.append("PROPOSAL_READY_FOR_REVIEW")
+        reason_codes.extend(_reason_codes_from_adjustments(proposal.adjustments))
     else:
         approval_state = ApprovalState.BLOCKED
         final_status = DecisionStatus.BLOCKED
@@ -119,7 +120,9 @@ def build_error_recommendation_record(
 def _reason_codes_from_blockers(blocked_reasons: list[str]) -> list[str]:
     reason_codes: list[str] = []
     for reason in blocked_reasons:
-        if "confidence" in reason.lower():
+        if "aggregate daily risk" in reason.lower():
+            reason_codes.append("DAILY_RISK_AGGREGATE_EXHAUSTED")
+        elif "confidence" in reason.lower():
             reason_codes.append("CONFIDENCE_BELOW_MIN")
         elif "edge" in reason.lower():
             reason_codes.append("EDGE_BELOW_MIN")
@@ -133,6 +136,14 @@ def _reason_codes_from_blockers(blocked_reasons: list[str]) -> list[str]:
             reason_codes.append("NO_EDGE")
         elif "zero" in reason.lower():
             reason_codes.append("POSITION_SIZE_ZERO_AFTER_CAPS")
+    return reason_codes
+
+
+def _reason_codes_from_adjustments(adjustments: list[str]) -> list[str]:
+    reason_codes: list[str] = []
+    for adjustment in adjustments:
+        if "aggregate daily risk" in adjustment.lower():
+            reason_codes.append("DAILY_RISK_AGGREGATE_REDUCED")
     return reason_codes
 
 

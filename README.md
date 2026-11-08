@@ -285,6 +285,26 @@ docker compose run --rm quantweather save-run --run-dir /app/artifacts/screen-ru
 - `Dockerfile` / `compose.yaml`: local container packaging for the CLI workflow
 - `tests/`: regression coverage for the initial decision pipeline
 
+## Daily Risk Budget
+
+`max_daily_risk` is enforced in aggregate by `screen_markets`, the layer that
+sizes positions and reports `proposed_notional`. Execution consumes those
+values as-is, so the sum of approved `proposed_notional` in one screen never
+exceeds `max_daily_risk - daily_risk_used`.
+
+- Each market is first sized independently (per-trade, per-market and other
+  static caps).
+- Approved proposals then draw on the shared budget in descending edge order
+  (ties keep input order), so scarce budget goes to the best opportunities
+  rather than whichever market the feed listed first.
+- The proposal that crosses the limit is cut to the remainder and carries
+  `DAILY_RISK_AGGREGATE_REDUCED`; later proposals are blocked with
+  `DAILY_RISK_AGGREGATE_EXHAUSTED` and a notional of 0. `DAILY_RISK_EXHAUSTED`
+  still means the day's budget was already spent before the screen started.
+- `risk.apply_daily_risk_budget` and `engine.budget_consumption_order` are the
+  shared accumulator step; a backtest should use them so it and live screening
+  report the same total exposure for the same inputs.
+
 ## Assumptions
 
 - The initial model treats weather inputs as already normalized forecast facts.
